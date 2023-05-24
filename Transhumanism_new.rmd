@@ -1,0 +1,1074 @@
+---
+title: "Data analysis of Transhumanism Questionnaire by Andreas Brauneis"
+author: "Prepared by Dinara Talypova"
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    toc: true
+    theme: architect
+    highlight: github
+    #testtesttest
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = 'center',
+  fig.width = 8,
+  fig.height = 4.5,
+  dev = c("svg"),
+  dpi = 500
+)
+
+source(here::here("my_helper.R"))  # Helper functions
+allpackages() #install all packages for work from my_helper.R
+
+df_main = read.csv('data_ready.csv')
+cat('Number of excluded cases:', sum(df_main$Exclude == 'True'), '. Number of kept cases:',  sum(df_main$Exclude == 'False'))
+df_main = df_main[(df_main$Exclude=='False'),]
+df_main = df_main %>%rename(rad_ext_1_3 = ad_ext_1_3)
+
+#define columns to reverse code
+#reverse_cols = c('lib_hmn_3_1', 'lib_hmn_3_2', 'lib_hmn_3_3', 'lib_hmn_3_4')
+#reverse code Q2 and Q5 columns
+#df_main[ , reverse_cols] = 8 - df_main[ , reverse_cols]
+
+
+#df_main = add_factors(df_main)
+
+#adding columns with SDs and excluding too similar
+# df_main_rot <- data.frame(t(df_main%>% select(lib_sent_1_1:rad_sub_2_3)))
+# df_main_rot$SD <- apply(df_main_rot, 1, sd, na.rm=TRUE)
+
+
+df_main$SD <- apply(df_main %>% select(lib_sent_1_1:rad_sub_2_3), 1, sd, na.rm=TRUE)
+cat('Number of excluded cases:', sum(df_main$SD <=0.))
+excl = sum(df_main$SD <=0.4)
+
+
+# df_main$country[df_main$country == "1"] <-"Germany"
+# df_main$country[df_main$country == "2"] <-"Austria"
+# df_main = df_main[(df_main$country=='Austria'),]
+```
+
+```{r}
+df=df_main%>% select(lib_sent_1_1:rad_sub_2_3,SD)
+#df=add_factors_new(df)
+
+```
+
+
+## Descriptive Statistics
+
+```{r}
+sample_size <- count(df)
+df <- df[df$SD >=0.4, ]
+
+#to_print <- cat('Sample size for Transhumanism Questionnaire:', sample_size$n)
+
+
+```
+
+-   **Sample size for Transhumanism Questionnaire (before exclusion): `r sample_size$n`**
+
+-   **Number of excluded participants due to low SD in their answers: `r excl`**
+
+
+### Distribution of answers on each question:
+
+**Liberal**
+
+```{r, fig.dim = c(10, 7), dpi = 400}
+#df_corr <- df %>% select(c(lib_sent_1_1:rad_sub_2_3))
+#df_corr <- df_corr[complete.cases(df_corr),]
+
+df_lib <- df %>% select(c(lib_sent_1_1:lib_trans_2_4), c(lib_sent1:lib_trans2))
+#df_dys <- df %>% select(c(dys_esc_1_1:dys_hmn_2_2))
+#df_rad <- df %>% select(c(rad_esc_1_1:rad_sub_2_3))
+#df_ocean <- df %>% select(c(ocean_extra_1_r:ocean_open_2))
+#df_soc <- df %>% select(c(social_comp_1:social_comp_11_r))
+
+
+result = likert(df %>% select(c(rad_esc_1_1:rad_sub_2_3)), nlevels=7)
+plot(result, group.order=names(df %>% select(c(rad_esc_1_1:rad_sub_2_3))),type="bar")
+
+```
+
+## Research Question #2: Can we form the factors from the answers?
+
+### Adequacy Test for factorisation
+
+**Kaiser-Meyer-Olkin (KMO) Test**
+
+```{r}
+df_lib <- df %>% select(c(lib_sent_1_1:lib_trans_2_4))
+df_dys <- df %>% select(c(dys_esc_1_1:dys_hmn_2_2))
+df_rad <- df %>% select(c(rad_esc_1_1:rad_sub_2_3))
+
+# Kaiser-Mayer-Olkin Kriterum
+#Marvelous results for the questionnaires
+kmo_all <- KMO(df%>%select(lib_sent_1_1:rad_sub_2_3))
+kmo1 <- KMO(df_lib%>%select(lib_sent_1_1:lib_trans_2_4))
+kmo2 <- KMO(df_dys)
+kmo3 <- KMO(df_rad)
+
+#OCEAN shows mediocre result for sampling adequacy (how suited our data is for Factor Analysis)
+#kmo_ocean <- KMO(df_ocean)
+
+#Social acceptance shows meritorious result for sampling adequacy (how suited our data is for Factor Analysis) 
+#we don't expect this since we treat the data as one factor
+#kmo_soc <- KMO(df_soc)
+
+```
+
+<details>
+
+<summary>Details</summary>
+
+```{r}
+kmo_all
+```
+
+</details>
+
+------------------------------------------------------------------------
+
+**Bartlett's Test of Sphericity**
+
+```{r}
+# Bartlett's Test
+
+bart_all <- cortest.bartlett(df%>%select(lib_sent_1_1:rad_sub_2_3))
+bart_lib <- cortest.bartlett(df_lib)
+bart_dys <- cortest.bartlett(df_dys)
+bart_rad <- cortest.bartlett(df_rad)
+bart_all
+
+```
+
+------------------------------------------------------------------------
+
+**Cronbach alpha**
+
+Cronbach's alpha is a measure of internal consistency, that is, how closely related a set of items are as a group.\
+It is considered to be a measure of scale reliability.
+
+```{r}
+
+cr_alpha_all <- psych::alpha(df%>%select(lib_sent_1_1:rad_sub_2_3)) #check.keys=TRUE
+cr_alpha_lib <- psych::alpha(df_lib) 
+cr_alpha_dys <- psych::alpha(df_dys) 
+cr_alpha_rad <- psych::alpha(df_rad) 
+
+cr_alpha_all
+```
+
+
+
+------------------------------------------------------------------------
+
+**Kaiser Criterion and Scree Plot**
+
+Original data: 
+Empirical Kaiser Criterion suggests 25 factors.
+Traditional Kaiser Criterion suggests 24 factors. - !
+(vs 36 in theory). 
+
+```{r}
+
+kaiserr_all <- efa.ekc(df%>%select(lib_sent_1_1:rad_sub_2_3))
+
+```
+
+------------------------------------------------------------------------
+
+**Cronbach alpha PER EACH FACTOR IN THEORY**
+
+Out of 36 theoretical factors:
+- 5 show Cronbach alpha <0.7: dys_hmn_2, dys_sent_3,rad_esc_4, dys_hmn_1, rad_esc_2,
+- and another 5 < 0.75: lib_hmn_3, rad_sent_1, rad_sub_1, dys_sent_2, rad_ext_2)
+
+```{r}
+
+name_list = list("^lib_sent_1", "^lib_sent_2", "^lib_sent_3", "^lib_sent_4",
+                 "^lib_enh_1", "^lib_enh_2", "^lib_enh_3",
+                 "^lib_hmn_1", "^lib_hmn_2", "^lib_hmn_3",
+                 "^lib_sent_1", "^lib_sent_2", "^lib_sent_3",
+                 "^lib_trans_1", "^lib_trans_2",
+                 
+                 "^dys_esc_1", "^dys_esc_2", "^dys_esc_3",
+                 "^dys_sent_1", "^dys_sent_2", "^dys_sent_3",
+                 "^dys_enh_1", "^dys_enh_2", "^dys_enh_3",
+                 "^dys_hmn_1", "^dys_hmn_2",
+                 
+                 "^rad_esc_1", "^rad_esc_2", "^rad_esc_3", "^rad_esc_4",
+                 "^rad_sent_1", "^rad_sent_2", 
+                 "^rad_ext_1", "^rad_ext_2", 
+                 "^rad_sub_1", "^rad_sub_2"
+                 )
+
+alfa_all <- alpha_table(df,name_list)
+alfa_all[order(alfa_all$cr_alpha),]
+
+```
+
+```{r, fig.dim = c(20, 20), dpi = 600}
+corr_all = ggcorr(df%>%select(lib_sent_1_1:rad_sub_2_3), method = c("pairwise.complete.obs", "pearson"),
+         nbreaks = ,
+         label = TRUE,
+         label_round = 2,
+         digits = 2,
+         legend.size = ,
+         hjust = 0.7, 
+         size = 1.3, 
+         layout.exp = 1,
+         label_size = 1,
+         label_alpha = TRUE,
+         low = "#3B9AB2",
+         mid = "#FFFFFF",
+         high = "#F21A00")
+corr_all
+#save_plot("corr_all.png", fig = corr_all, width=35, height=35) 
+
+```
+
+Based on Pearson Correlation Matrix as well as on content of the questions, we excluded 24 questions.
+Thus, items which correlations with other items inside the theoretical factors were lower or equal to 0.45, were excluded from the data. 
+The new data frame was called 'df_clean'.
+
+
+```{r}
+df_clean <- df %>% select(lib_sent_1_1:lib_sent_1_3,
+                          lib_sent_2_1:lib_sent_2_3,
+                          lib_sent_3_1:lib_sent_3_4,
+                          lib_sent_4_1:lib_sent_4_3, 
+                          lib_enh_1_1:lib_enh_1_5,
+                          lib_enh_2_1:lib_enh_2_2,
+                          lib_enh_3_1:lib_enh_3_3,
+                          lib_hmn_1_1:lib_hmn_1_3,
+                          lib_hmn_2_1:lib_hmn_2_3,
+                          lib_trans_1_1:lib_trans_1_6,
+                          lib_trans_2_1:lib_trans_2_3,
+                          
+                          rad_esc_1_1, rad_esc_1_2, rad_esc_1_4,
+                          rad_esc_2_2:rad_esc_2_3,
+                          rad_esc_3_1:rad_esc_3_4,
+                          rad_esc_1_3, rad_esc_1_5,
+                          rad_sent_1_1, rad_sent_1_4,
+                          rad_sent_2_1:rad_sent_2_4,
+                          rad_ext_1_1, rad_ext_1_2, rad_ext_1_3, 
+                          rad_ext_2_2,
+                          rad_sub_1_1, rad_sub_1_3, rad_sub_1_4,
+                          rad_sub_2_1:rad_sub_2_3,
+                          
+                          dys_esc_1_1:dys_esc_1_3,
+                          dys_esc_2_1:dys_esc_2_4,
+                          dys_esc_3_1:dys_esc_3_3,
+                          dys_sent_1_1, dys_sent_1_3, 
+                          dys_sent_2_2,dys_sent_2_3,
+                          dys_sent_3_2,
+                          dys_enh_1_1:dys_enh_1_2,
+                          dys_enh_2_1:dys_enh_2_3,
+                          dys_enh_3_1, dys_enh_3_2, dys_enh_3_4,
+                          dys_hmn_1_1:dys_hmn_1_2)
+
+```
+
+
+------------------------------------------------------------------------
+
+**Bartlett's Test of Sphericity & KMO**
+
+```{r}
+correlation <- cor(df_clean)
+cortest.bartlett(correlation, n=300)
+KMO(df_clean)
+
+```
+
+**Kaiser Criterion and Scree Plot**
+
+'Clean' data: 
+Empirical Kaiser Criterion suggests 20 factors.
+Traditional Kaiser Criterion suggests 18 factors. - !
+(vs 29 in 'theory')
+
+```{r}
+kaiserr_clean <- efa.ekc(df_clean)
+
+``` 
+
+**Parallel Analysis Scree Plot**
+Parallel analysis suggests that the number of factors =  7  and the number of components =  NA 
+
+```{r}
+#Parallel analysis suggests that the number of factors =  7  and the number of components =  NA 
+fa.parallel(df_clean,fm='pa', fa='fa',  main = 'Parallel Analysis Scree Plot', n.iter=500)
+
+```
+
+------------------------------------------------------------------------
+
+##Exploratory factor analysis
+
+We are applying EFA three times:
+- with 7 factors as recommended by Parallel Analysis Scree Plot
+- with 20 factors Empirical Kaiser Criterion
+- ???????? with 23 factors (possible theoretical factors where some subcategories are united if there are <=3 items per factors left). 
+- with 29 factors (possible theoretical factors from the items left). 
+
+We look at the proposed factors with loadings >=0.3
+
+We selected principal axis factoring (“pa”) as the extraction method.
+We used oblique rotation (rotate = “oblimin”) as we believe that there is a correlation in the factors. 
+
+
+**7 factors**
+
+```{r, fig.dim = c(20, 20), dpi = 600}
+
+df_model_7  <- fa(df_clean, nfactors = 7, rotate = "oblimin", n.obs = 300 , residuals = TRUE, fm = 'pa')
+print(df_model_7, sort = TRUE)
+#FOR 7 FACTORS: The 1st factor (PA1) explained 13% of the data variance, while the second factor (PA2) explained 12%, 3+4: 6%, etc.
+
+df_loadings_7 <- df_model_7$loadings
+#write.csv(df_loadings_7, "df_loadings_clean_26.csv", row.names=TRUE)
+#print(df_model_7$loadings, cutoff = 0.5)
+
+mmm <- printLoadings(df_model$loadings, digits = 2, cutoff = 0.3, sort = TRUE)
+#as.table(mmm)
+#write.csv(mmm, "df_loadings_clean_03_7.csv", row.names=TRUE)
+
+
+fa.diagram(df_model_7, simple=TRUE, cut=.3, digits=2,sort = TRUE, 
+           #size=c(12,15), gap.size = 5, 
+           e.size = 0.1, cex = 0.9, 
+           main = "Exploratory Factor Analysis (cutoff 0.3) - clean data")
+
+##???
+plot(df_model_7)
+
+```
+
+The root means the square of residuals (RMSR) is 0.04. This value should be closer to 0.
+RMSEA (root mean square error of approximation) index = 0.053 shows not that good model fit as it is above 0.05.
+Tucker-Lewis Index (TLI) is 0.781 which is unacceptable since it should be >0.95 or at least reach 0.9).
+
+**20 factors**
+
+16 out of 90 variables have become insignificant (excl.) and 4 others have double-loading (keep*).
+We can form 17 factors which consist of >=3 items and additional 2 factors with 2 items inside. 
+1 factor consists of only 1 item (0.45 loadings).
+
+*lib_enh_1_5 and lib_enh_1_3 (form one separate factor) belong to other lin_enh1 group
+*rad_esc_3_3 belongs to other rad_esc group
+*lib_sent_3_1 belongs to other lib_sent3 group
+
+```{r, fig.dim = c(20, 20), dpi = 600}
+
+df_model_20  <- fa(df_clean, nfactors = 20, rotate = "oblimin", n.obs = 300 , residuals = TRUE, fm = 'pa')
+print(df_model_20, sort = TRUE)
+#FOR 20 FACTORS: The 1st factor (PA1) explained 5% of the data variance, while the 2-3-4-etc factor (PA2) explained 4%, etc.
+
+df_loadings_20 <- df_model_20$loadings
+#write.csv(df_loadings_20, "df_loadings_clean_26.csv", row.names=TRUE)
+#print(df_model_20$loadings, cutoff = 0.5)
+
+mmm <- printLoadings(df_model_20$loadings, digits = 2, cutoff = 0.3, sort = TRUE)
+# as.table(mmm)
+# write.csv(mmm, "df_loadings_clean_03_29.csv", row.names=TRUE)
+
+
+fa.diagram(df_model_20, simple=TRUE, cut=.3, digits=2,sort = TRUE, 
+           #size=c(12,15), gap.size = 5, 
+           e.size = 0.1, cex = 0.9, 
+           main = "Exploratory Factor Analysis (cutoff 0.3) - clean data")
+
+```
+
+The root means the square of residuals (RMSR) is 0.02. This is acceptable as this value should be closer to 0.
+RMSEA (root mean square error of approximation) index = 0.035 shows a good model fit as it is below 0.05.
+Tucker-Lewis Index (TLI) is 0.899 (which ideally should be >0.95 or at least reach 0.9).
+
+**29 factors**
+
+8 out of 90 variables have become insignificant (excl.), 2 have double-loading (form one separate factor) and 1 triple-loading (keep).
+We can form 18 factors which consist of >=3 items and additional 7 factors with 2 items inside.
+3 factors consist of only 1 item (0.59-0.36-0.31 loadings).
+
+```{r, fig.dim = c(20, 20), dpi = 600}
+
+df_model_29  <- fa(df_clean, nfactors = 29, rotate = "oblimin", n.obs = 300 , residuals = TRUE, fm = 'pa')
+print(df_model_29, sort = TRUE)
+#FOR 20 FACTORS: The 1st factor (PA1) explained 4% of the data variance,  etc.
+
+df_loadings_29 <- df_model_29$loadings
+#write.csv(df_loadings_29, "df_loadings_clean_26.csv", row.names=TRUE)
+#print(df_model_29$loadings, cutoff = 0.5)
+
+mmm <- printLoadings(df_model_29$loadings, digits = 2, cutoff = 0.3, sort = TRUE)
+#as.table(mmm)
+#write.csv(mmm, "df_loadings_clean_03_23.csv", row.names=TRUE)
+
+
+fa.diagram(df_model_29, simple=TRUE, cut=.3, digits=2,sort = TRUE, 
+           #size=c(12,15), gap.size = 5, 
+           e.size = 0.1, cex = 0.9, 
+           main = "Exploratory Factor Analysis (cutoff 0.3) - clean data")
+
+```
+
+The root means the square of residuals (RMSR) is 0.01. This is acceptable as this value should be closer to 0.
+RMSEA (root mean square error of approximation) index = 0.025 shows a good model fit as it is below 0.05.
+Tucker-Lewis Index (TLI) is 0.945 which is acceptable since it has reached 0.95 threshold.
+
+------------------------------------------------------------------------
+
+**Cronbach alpha PER EACH FACTOR - 7 factors**
+
+```{r}
+
+pa1 <- df_clean %>% select(lib_enh_1_1, lib_enh_1_3, lib_enh_1_4,
+                            lib_enh_2_1,lib_enh_2_2,lib_enh_3_2,lib_enh_3_3,
+                            lib_hmn_1_1,
+                            lib_sent_1_2,lib_sent_1_3,lib_sent_2_2,lib_sent_2_3,lib_sent_3_1,lib_sent_3_2,lib_sent_3_3,lib_sent_3_4,
+                            lib_trans_1_2,lib_trans_1_3, lib_trans_1_6,
+                            rad_esc_2_3,rad_esc_3_1,rad_esc_3_2,rad_esc_3_3,rad_esc_3_4,
+                            rad_ext_2_2)
+
+pa2 <- df_clean %>% select(dys_esc_1_1:dys_sent_1_3,
+                          dys_sent_3_2:dys_hmn_1_2)
+
+pa7 <- df_clean %>% select(rad_ext_1_1,rad_ext_1_2,rad_ext_1_3,
+                             rad_esc_1_1,rad_esc_1_2,rad_esc_1_4,
+                             rad_sub_1_1,rad_sub_1_4,rad_sub_2_2,rad_sub_2_3,
+                             lib_sent_1_1)
+
+pa4 <- df_clean %>% select(rad_esc_1_3,rad_esc_1_5,
+                             lib_sent_2_1,
+                             lib_enh_1_5,
+                             lib_trans_1_1,lib_trans_1_4,lib_trans_2_1,lib_trans_2_2,lib_trans_2_3,
+                             dys_sent_2_2,dys_sent_2_3)
+
+pa3 <- df_clean %>% select(lib_hmn_2_1,lib_hmn_2_2,lib_hmn_2_3,
+                           lib_sent_4_1,lib_sent_4_2, lib_sent_4_3)
+
+pa5 <- df_clean %>% select(rad_sent_2_2, rad_sent_2_1,rad_sent_2_3, rad_sent_2_4,
+                           rad_sub_2_1)
+
+pa6 <- df_clean %>% select(lib_hmn_1_2, lib_hmn_1_2,
+                           #these 2 items also belong to PA1:
+                           lib_sent_3_3,lib_sent_3_2)
+  
+list_of_pas = llist(pa1,pa2,pa3,pa4,pa5,pa6,pa7)
+
+my_cron_fun <- function(list_of_pas){
+  alfa_df <- setNames(data.frame(matrix(ncol = 2, nrow = 0)), c("factor", "cr_alpha"))
+  list_of_df_names = names(list_of_pas)
+  pa_number = 1
+  for (i in list_of_pas){
+      alphaa <- psych::alpha(i)
+      out = round(alphaa$total$raw_alpha, 2)
+      alfa_df = rbind(alfa_df, list(factor = list_of_df_names[pa_number], cr_alpha = out))
+      pa_number<-pa_number+1
+  }
+  return(alfa_df)
+}
+  
+alfa_df_7 <-my_cron_fun(list_of_pas)
+alfa_df_7[order(alfa_df_7$cr_alpha),]
+
+
+
+```
+
+------------------------------------------------------------------------
+
+**Cronbach alpha PER EACH FACTOR - 20 factors**
+
+After looking precisely on the content of the questions, we excluded some items from the proposed by EFA which were both illogical and had lower loadings inside the factors:
+
+- PA2: excl. dys_enh_1_1 (0,41), dys_enh_1_2 (0,34) and kept the rest dys_enh_3_4	(0,63), dys_enh_3_1 (0,57), dys_enh_3_2 (0,53)
+- PA17: excl. lib_enh_1_2 (0,31), lib_hmn_1_1 (0,36) and kept the rest lib_enh_2_2 (0,56), lib_enh_2_1 (0,49)
+- PA9: excl. lib_sent_1_3 (0,32) and kept the rest lib_trans_2_2 (0,59), lib_trans_2_1 (0,58), lib_trans_2_3 (0,55), lib_trans_1_4 (0,31)
+- PA11: excl. dys_hmn_1_1 (0,33) and kept the rest dys_sent_2_3 (0,71), dys_sent_2_2 (0,67)
+
+After these corrections:
+Out of 20 factors, one had only 1 item in it: PA19 (no analysis), 4 had less than 3 items in it: PA1, PA11, PA17, PA18 (correlation).
+
+
+```{r}
+# pa13 <- df_clean %>% select(lib_enh_3_2,lib_enh_3_3,lib_enh_3_1)
+# pa5 <- df_clean %>% select(rad_sent_2_2,rad_sent_2_1,rad_sent_2_3,rad_sent_2_4)
+# pa8 <- df_clean %>% select(dys_esc_3_3,dys_esc_3_1,dys_esc_3_2,dys_esc_1_1,dys_esc_1_3,dys_enh_2_2)
+# pa10 <- df_clean %>% select(rad_sub_2_2,rad_sub_2_3,rad_sub_2_1)
+# pa12 <- df_clean %>% select(lib_enh_1_1,lib_enh_1_3,lib_enh_1_4,lib_enh_1_5,lib_sent_2_1,lib_sent_2_2)
+# pa3 <- df_clean %>% select(lib_sent_4_1,lib_sent_4_2,lib_sent_4_3,lib_hmn_1_2,lib_hmn_1_3)
+# pa4 <- df_clean %>% select(rad_esc_2_3,rad_esc_2_2,rad_esc_1_5,rad_esc_3_1)
+# pa2 <- df_clean %>% select(dys_enh_3_4,dys_enh_3_1,dys_enh_3_2,dys_enh_1_1,dys_enh_1_2)
+# pa20 <- df_clean %>% select(rad_sub_1_4,rad_sub_1_1,rad_ext_1_1,rad_ext_1_2)
+# pa17 <- df_clean %>% select(lib_enh_2_2,lib_enh_2_1,lib_enh_1_2,lib_hmn_1_1)
+# pa15 <- df_clean %>% select(dys_sent_1_3,dys_sent_1_1,dys_sent_3_2,dys_esc_2_2)
+# pa9 <- df_clean %>% select(lib_trans_2_2,lib_trans_2_1,lib_trans_2_3,lib_trans_1_4,lib_sent_1_3)
+# pa6 <- df_clean %>% select(lib_hmn_2_1,lib_hmn_2_2,lib_hmn_2_3)
+# pa18 <- df_clean %>% select(rad_sent_1_4,rad_sent_1_1,rad_esc_3_3)
+# pa16 <- df_clean %>% select(lib_sent_3_1,lib_sent_3_4,lib_sent_3_2)
+# pa7 <- df_clean %>% select(rad_esc_1_1,rad_esc_1_4,rad_esc_1_2)
+# pa14 <- df_clean %>% select(dys_esc_2_1,dys_esc_2_4,dys_enh_2_1)
+# pa1 <- df_clean %>% select(lib_trans_1_6,lib_trans_1_1)
+# pa11 <- df_clean %>% select(dys_sent_2_3,dys_sent_2_2,dys_hmn_1_1)
+# pa19 <- df_clean %>% select(dys_enh_2_3)
+
+```
+
+```{r}
+pa13 <- df_clean %>% select(lib_enh_3_2,lib_enh_3_3,lib_enh_3_1)
+pa5 <- df_clean %>% select(rad_sent_2_1,rad_sent_2_2,rad_sent_2_3,rad_sent_2_4)
+pa8 <- df_clean %>% select(dys_esc_3_3,dys_esc_3_1,dys_esc_3_2,dys_esc_1_1,dys_esc_1_3,dys_enh_2_2)
+pa10 <- df_clean %>% select(rad_sub_2_2,rad_sub_2_3,rad_sub_2_1)
+pa12 <- df_clean %>% select(lib_enh_1_1,lib_enh_1_3,lib_enh_1_4,lib_enh_1_5,lib_sent_2_1,lib_sent_2_2)
+pa3 <- df_clean %>% select(lib_sent_4_1,lib_sent_4_2,lib_sent_4_3,lib_hmn_1_2,lib_hmn_1_3)
+pa4 <- df_clean %>% select(rad_esc_2_3,rad_esc_2_2,rad_esc_1_5,rad_esc_3_1, rad_esc_3_3) #updated (added: rad_esc_3_3)
+pa2 <- df_clean %>% select(dys_enh_3_4,dys_enh_3_1,dys_enh_3_2) #updated (excl: dys_enh_1_1,dys_enh_1_2)
+pa20 <- df_clean %>% select(rad_sub_1_4,rad_sub_1_1,rad_ext_1_1,rad_ext_1_2)
+pa17 <- df_clean %>% select(lib_enh_2_2,lib_enh_2_1) # updated (excl: lib_enh_1_2,lib_hmn_1_1) #NOALPHA
+pa15 <- df_clean %>% select(dys_sent_1_3,dys_sent_1_1,dys_sent_3_2,dys_esc_2_2)
+pa9 <- df_clean %>% select(lib_trans_2_2,lib_trans_2_1,lib_trans_2_3,lib_trans_1_4) #updated (excl: lib_sent_1_3)
+pa6 <- df_clean %>% select(lib_hmn_2_1,lib_hmn_2_2,lib_hmn_2_3)
+pa18 <- df_clean %>% select(rad_sent_1_4,rad_sent_1_1) #updated (excl: rad_esc_3_3) #NOALPHA
+pa16 <- df_clean %>% select(lib_sent_3_1,lib_sent_3_4,lib_sent_3_2)
+pa7 <- df_clean %>% select(rad_esc_1_1,rad_esc_1_4,rad_esc_1_2)
+pa14 <- df_clean %>% select(dys_esc_2_1,dys_esc_2_4,dys_enh_2_1)
+pa1 <- df_clean %>% select(lib_trans_1_6,lib_trans_1_1) #NOALPHA
+pa11 <- df_clean %>% select(dys_sent_2_3,dys_sent_2_2) #updated (excl: dys_hmn_1_1) #NOALPHA
+#pa19 <- df_clean %>% select(dys_enh_2_3)
+  
+list_of_pas_20 = llist(pa2,pa3,pa4,pa5,pa6,pa7,pa8,pa9,pa10,pa12,pa13,pa14,pa15,pa16,pa20)
+  
+alfa_df_20 <-my_cron_fun(list_of_pas_20)
+alfa_df_20[order(alfa_df_20$cr_alpha),]
+
+```
+```{r}
+cor(pa1, method="kendall")
+cor(pa11, method="kendall")
+cor(pa17, method="kendall")
+cor(pa18, method="kendall")
+
+```
+
+In Cronbach's alpha analysis 1 factor showed questionable internal consistency: 
+- pa7 (rad_esc_1_1,rad_esc_1_4,rad_esc_1_2)  
+
+The rest 14 factors had 0.73 >= alfa =< 0.91
+
+For 2-item factors, we applied Kendall's Tau correlation coefficient and all 4 showed strong correlations (0.43-0.54)
+
+
+------------------------------------------------------------------------
+
+**Cronbach alpha PER EACH FACTOR - 29 factors**
+
+After looking on the content of the questions, we excluded only 1 item from the factors proposed by EFA (the same as in the EFA-20) which was both illogical and had low loadings (although not the lowest) inside the factor:
+
+- PA9: excl. lib_sent_1_3 (0,37) and kept the rest lib_trans_2_2 (0,71), lib_trans_2_1 (0,51), lib_trans_2_3 (0,59), lib_trans_1_4 (0,32)
+
+
+After this correction:
+Out of 29 factors, 3 had only 1 item in it: PA20, PA4, PA21 (no analysis), 6 had less than 3 items in it: PA7, PA11, PA15, PA17, PA18, PA24 (correlation).
+
+```{r}
+pa28 <- df_clean %>% select(rad_esc_3_1:rad_esc_3_4)
+pa26 <- df_clean %>% select(dys_sent_1_1,dys_sent_1_3,dys_sent_3_2,dys_esc_2_2)
+pa13 <- df_clean %>% select(lib_enh_3_2,lib_enh_3_3,lib_enh_3_1)
+pa10 <- df_clean %>% select(rad_sub_2_2,rad_sub_2_3,rad_sub_2_1)
+pa9 <- df_clean %>% select(lib_trans_2_2,lib_trans_2_1,lib_trans_2_3,lib_trans_1_4) 
+pa3 <- df_clean %>% select(lib_sent_4_1,lib_sent_4_2,lib_sent_4_3)
+pa29 <- df_clean %>% select(rad_ext_1_1:rad_ext_1_3)
+pa8 <- df_clean %>% select(dys_esc_3_3,dys_esc_3_1,dys_esc_3_2)
+pa5 <- df_clean %>% select(rad_sent_2_1,rad_sent_2_2,rad_sent_2_3,rad_sent_2_4)
+pa1 <- df_clean %>% select(lib_enh_1_1,lib_sent_2_2,lib_enh_1_3,lib_enh_1_4,lib_sent_1_2) 
+pa17 <- df_clean %>% select(lib_enh_2_2,lib_enh_2_1)  #NOALPHA
+pa25 <- df_clean %>% select(rad_esc_2_2,rad_esc_2_3)  #NOALPHA
+pa6 <- df_clean %>% select(lib_hmn_2_1,lib_hmn_2_2,lib_hmn_2_3)
+pa18 <- df_clean %>% select(rad_sent_1_4,rad_sent_1_1) #NOALPHA
+pa2 <- df_clean %>% select(dys_esc_1_2,dys_esc_1_3,dys_enh_2_1,dys_esc_1_1) 
+pa12 <- df_clean %>% select(lib_trans_1_6,lib_trans_1_2,lib_trans_1_1,lib_trans_1_3)
+pa27 <- df_clean %>% select(dys_enh_1_2,dys_enh_1_1,dys_enh_2_2,dys_enh_2_3)
+pa19 <- df_clean %>% select(lib_sent_3_1,lib_sent_3_4,lib_sent_3_2,lib_sent_3_3)
+pa7 <- df_clean %>% select(rad_esc_1_1,rad_esc_1_4) #NOALPHA
+pa16 <- df_clean %>% select(rad_sub_1_4,rad_sub_1_1,rad_sub_1_3)
+pa15 <- df_clean %>% select(dys_esc_2_1,dys_esc_2_4) #NOALPHA
+pa23 <- df_clean %>% select(dys_enh_3_4,dys_enh_3_1,dys_enh_3_2) 
+#pa20 <- df_clean %>% select(lib_sent_1_1)
+pa24 <- df_clean %>% select(dys_hmn_1_1,dys_hmn_1_2) #NOALPHA
+pa22 <- df_clean %>% select(lib_hmn_1_1,lib_hmn_1_2,lib_hmn_1_3) 
+pa11 <- df_clean %>% select(dys_sent_2_3,dys_sent_2_2) #NOALPHA
+#pa4 <- df_clean %>% select(lib_sent_2_1)
+#pa21 <- df_clean %>% select(lib_enh_1_5)
+
+
+list_of_pas_29 = llist(pa1,pa2,pa3,pa5,pa6,pa8,pa9,pa10,pa12,pa13,pa14,pa16,pa19,pa22,pa23,pa25,pa26,pa27,pa28,pa29)
+  
+alfa_df_29 <-my_cron_fun(list_of_pas_29)
+alfa_df_29[order(alfa_df_29$cr_alpha),]
+
+```
+
+```{r}
+cor(pa7, method="kendall")
+cor(pa11, method="kendall")
+cor(pa15, method="kendall")
+cor(pa17, method="kendall")
+cor(pa18, method="kendall")
+cor(pa24, method="kendall")
+
+
+```
+
+In Cronbach's alpha analysis all 22 factors showed from good to marvelous internal consistency: 
+0.73 >= alfa =< 0.91
+
+For 2-item factors, we applied Kendall's Tau correlation coefficient and all 6 showed strong correlations (0.43-0.56)
+
+
+------------------------------------------------------------------------
+
+**Principal Component Analysis (PCA) FOR CLEAN DATA**
+
+```{r}
+
+df_clean <- add_factors_upd(df_clean)
+df_factors <-df_clean %>% select (rad_enh_true28:dys_profound_eff11)
+
+
+res.pca <- PCA(df_factors,  graph = FALSE)
+get_eig(res.pca)
+fviz_screeplot(res.pca, addlabels = TRUE, ylim = c(0, 50))
+pca_plot <- as.ggplot(fviz_pca_var(res.pca, col.var="contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = FALSE # Avoid text overlapping
+             ))
+save_plot("pca_plot.png", fig = pca_plot, width=35, height=35)
+
+# Contributions of variables to PC1
+fviz_contrib(res.pca, choice = "var", axes = 1, top = 15)
+# Contributions of variables to PC2
+fviz_contrib(res.pca, choice = "var", axes = 2, top =10)
+# Contributions of variables to PC3
+fviz_contrib(res.pca, choice = "var", axes = 3, top =10)
+
+
+
+
+questionnaire <- colnames(df_factors)
+#questionnaire <- c("rad", "dys", "lib", "rad", "lib", "lib", "rad", "dys", "rad", "lib", "lib", "rad", "lib", "rad", "dys", "lib", "dys", "lib", "rad", "rad", "dys","dys","dys","lib", "dys")
+
+#ggbiplot(res.pca,ellipse=TRUE,   groups=questionnaire)
+
+```
+
+```{r}
+
+
+# my_pca <- prcomp(df_factors, center = TRUE,scale. = TRUE)
+# summary(my_pca)
+# 
+# install.packages("cli")
+# install.packages("devtools")
+# library(devtools)
+# install_github("vqv/ggbiplot")
+# library(ggbiplot)
+# 
+# ggbiplot(my_pca)
+#ggbiplot(my_pca,ellipse=TRUE,  labels=rownames(df_factors), groups=questionnaire)
+
+
+```
+
+**Correspondence Analysis (CA)**
+
+```{r}
+
+# 1. Computing Correspondence analysis
+library("FactoMineR")
+res.ca <- CA(df_factors, graph = FALSE)
+  
+# Result for column variables
+get_ca_col(res.ca)
+fviz_ca_col(res.ca)
+#fviz_ca_biplot(res.ca)
+
+```
+
+```{r}
+#Rotate columns and rows for clustering
+df_fac_rotat <- data.frame(t(df_factors))
+df_fac_rotat <- scale(t(df_factors))
+df_fac_rotat <- subset(df_fac_rotat, select = -c(259, 272))
+
+
+# 2. Compute k-means
+set.seed(123)
+fviz_nbclust(df_fac_rotat, kmeans, method = "silhouette") #suggests 2 as an optimal number of clusters
+km.fac <- kmeans(df_fac_rotat, centers = 3, nstart = 25)
+
+
+# 3. Visualize
+library("factoextra")
+
+fviz_cluster(km.fac, data = df_fac_rotat,
+             ggtheme = theme_minimal(),
+             geom = c("point"), shape = 16,
+             main = "Partitioning Clustering Plot"
+             )+ geom_text(aes(label = paste0(questionnaire)), alpha = 0.5, size = 3, nudge_y = 0.1, show.legend = FALSE)
+
+```
+
+```{r}
+
+# Compute hierarchical clustering and cut into 3 clusters
+res <- hcut(df_fac_rotat, k = 3, stand = TRUE)
+
+# Visualize
+fviz_dend(res, rect = TRUE, cex = 0.5)
+
+```
+
+
+```{r}
+kaiserr_fac <- efa.ekc(df_factors)
+fa.parallel(df_factors,fm='pa', fa='fa',  main = 'Parallel Analysis Scree Plot', n.iter=500)
+
+``` 
+```{r, fig.dim = c(20, 20), dpi = 600}
+
+df_model_5  <- fa(df_factors, nfactors = 5, rotate = "oblimin", n.obs = 300 , residuals = TRUE, fm = 'pa')
+print(df_model_5, sort = TRUE)
+#FOR 20 FACTORS: The 1st factor (PA1) explained 4% of the data variance,  etc.
+
+df_loadings_5 <- df_model_5$loadings
+# write.csv(df_loadings_5, "df_loadings_factor_3.csv", row.names=TRUE)
+print(df_model_5$loadings, cutoff = 0.3)
+
+mmm <- printLoadings(df_loadings_5, digits = 2, cutoff = 0.35, sort = TRUE)
+# as.table(mmm)
+# write.csv(mmm, "df_loadings_clean_035_3.csv", row.names=TRUE)
+mmm
+
+
+fa.diagram(df_model_5, simple=TRUE, cut=.35, digits=2,sort = TRUE, 
+           #size=c(12,15), gap.size = 5, 
+           e.size = 0.1, cex = 0.9, 
+           main = "Exploratory Factor Analysis (cutoff 0.3) - clean data")
+
+
+
+```
+**6 factors**
+The root means the square of residuals (RMSR) is 0.02 This is acceptable as this value should be closer to 0.
+RMSEA (root mean square error of approximation) index = 0.035 shows a good model fit as it is below 0.05.
+Tucker-Lewis Index (TLI) is 0.971 which is acceptable since it has reached 0.95 threshold.
+
+**4 factors**
+The root means the square of residuals (RMSR) is 0.03 This is acceptable as this value should be closer to 0.
+RMSEA (root mean square error of approximation) index = 0.055 shows a good model fit as it is below 0.05.
+Tucker-Lewis Index (TLI) is 0.93 which is acceptable since it has reached 0.95 threshold.
+
+**5 factors**
+The root means the square of residuals (RMSR) is 0.03. This is acceptable as this value should be closer to 0.
+RMSEA (root mean square error of approximation) index = 0.048 shows a good model fit as it is below 0.05.
+Tucker-Lewis Index (TLI) is 0.946 which is acceptable since it has reached 0.95 threshold.
+
+
+```{r}
+#HEATMAP
+# heat_plot<-as.ggplot(pheatmap(df_fac_rotat, scale="column"))
+# save_plot("heat_plot.png", fig = heat_plot, width=35, height=35)
+
+```
+
+------------------------------------------------------------------------
+
+**Confirmatory Factor Analysis (PCA)**
+
+
+```{r}
+
+hz.model <- '
+dys =~ dys_bless_given2+dys_medANDgen27+dys_gattaca23+dys_vulnerab24+dys_no_reengin15+dys_imperfect8+dys_alien_frbio26
+lib =~ lib_singular9+lib_superhum12+lib_mor_obl19+lib_tech_adv_bio1+lib_par_resp13+lib_birth_man17+lib_self_determ22
+rad =~ rad_enh_true28+rad_cyborg25+rad_soc_constr_lib5+rad_evol_tech29+rad_dig_twin10+rad_self_reconstr16+rad_pos_force18
+lib_fr =~ lib_free_opt3+lib_author6+lib_self_determ22
+
+dys_profound_eff11~~dys_alien_frbio26
+
+lib_free_opt3~~lib_author6
+
+dys_bless_given2~~dys_medANDgen27
+dys_medANDgen27~~dys_gattaca23
+dys_gattaca23~~dys_vulnerab24
+dys_vulnerab24~~dys_no_reengin15
+dys_no_reengin15~~dys_imperfect8
+dys_imperfect8~~dys_alien_frbio26
+
+lib_singular9~~lib_superhum12
+lib_superhum12~~lib_mor_obl19
+lib_mor_obl19~~lib_tech_adv_bio1
+lib_tech_adv_bio1~~lib_par_resp13
+lib_par_resp13~~lib_birth_man17
+lib_birth_man17~~lib_self_determ22
+
+lib~~rad
+lib~~lib_fr
+rad~~lib_fr'
+
+df_fac_nona <-na.omit(df_factors)
+
+hz.fit <- cfa(hz.model, data=df_factors)
+summary(hz.fit, standardized=TRUE)
+fitmeasures(hz.fit, c('cfi', 'rmsea', 'rmsea.ci.upper', 'bic', 'srmr', 'tli'))
+
+modificationindices(hz.fit) %>%
+  as_data_frame() %>%
+  arrange(-mi) %>%
+  filter(mi > 11)
+
+#install.packages("semPlot")
+library(semPlot)
+semPlot::semPaths(hz.fit, "std")
+
+
+```
+
+
+</details>
+
+## Research Question #3: How well do the questionnaires fit the theoretical assumptions?
+
+Exploratory Factor Analysis of Three Questionnaires (theoretically defined factors calculated through the means of all questions inside the factor) shows that:
+
+-   **Liberal and Radical questionnaires** belong to the same questionnaire with the exception of **Liberal Humanism** factor which **does not belong to any of the questionnaires** and
+
+-   **Radical Human Essence** which belongs to **Dystopian questionnaire**. See below the diagram.
+
+These results are also visible in Spearman Correlation matrix.
+
+```{r, fig.dim = c(10, 7), dpi = 300}
+df_model  <- fa(df %>% select (lib_sent1:rad_sub2), nfactors = 4, rotate = "varimax")
+
+fa.diagram(df_model, simple=TRUE, cut=.5, digits=2,sort = FALSE, 
+           #size=c(12,15), gap.size = 5, 
+           e.size = 0.1, cex = 0.9, 
+           main = "Exploratory Factor Analysis of Three Questionnaires (not sorted)")
+
+# draw_corr_s(df%>% select(c(lib_sent, lib_enh, lib_hmn, lib_trans,
+#                            dys_esc, dys_sent, dys_enh, dys_hmn,
+#                            rad_esc, rad_sent, rad_ext, rad_sub)))
+```
+
+```{r, fig.dim = c(10, 7), dpi = 300}
+
+draw_corr_s(df_lib %>% select (lib_sent1:lib_trans2))
+draw_corr_s(df_lib %>% select (lib_hmn_1_1:lib_hmn_3_4))
+# draw_corr_s(df_lib %>% select (lib_sent_1_1:lib_trans_2_4))
+
+```
+Moreover, most of the correlations between factors are significant. The exceptions are:
+
+-   **Liberal Humanism** which small negative correlations with Dystopian factors are insignificant (besides neg.corr with Dystopian Human Enhancement which is significant)
+
+-   **Transhumanism** (Liberal questionnaire) which small negative correlation with Dystopian Sentiment is insignificant
+
+-   **Radical Human Essence** which has significant correlations only with:
+
+    -   *big positive* correlations with Dystopian factors,
+
+    -   *small positive* correlation with Radical Subjectivity,
+
+    -   *small negative* correlation with Liberal Human Enhancement
+
+```{r, fig.dim = c(11, 10), dpi = 600}
+pairs.panels(df_lib%>%select(lib_sent1:lib_trans2),
+             method = "spearman", # correlation method
+             main="Correlation Scatter Plot Matrix",
+             hist.col = "#00AFBB",
+             pch=".",
+             density = TRUE,  # show density plots
+             ellipses = TRUE, # show correlation ellipses
+             stars = TRUE
+)
+```
+
+```{r, fig.dim = c(11, 10), dpi = 600}
+# pairs.panels(df_lib%>%select(lib_sent_1_1:lib_sent_4_3),
+#              method = "spearman", # correlation method
+#              main="Correlation Scatter Plot Matrix",
+#              hist.col = "#00AFBB",
+#              pch=".",
+#              density = TRUE,  # show density plots
+#              ellipses = TRUE, # show correlation ellipses
+#              stars = TRUE
+# )
+```
+
+
+## Multiple linear regression
+
+In the end, we have applied Multiple linear regression for all three questionnaires to calculate estimates of significant covariances.
+
+Respondents who provided no answers for Education level, Annual income, Frequency of mood/stimulating medicine intake, Cosmetic surgery, and Amount of disabled friends or family members (n = 50) were excluded from the models.
+
+```{r}
+df_main$sex[df_main$sex == "1"] <-"Male"
+df_main$sex[df_main$sex == "2"] <-"Female"
+df_main$sex[df_main$sex == "3"] <-"Other"
+
+df$mar_status[df$mar_status == "1"] <-"Single"
+df$mar_status[df$mar_status == "2"] <-"Married"
+df$mar_status[df$mar_status == "3"] <-"Divorced"
+df$mar_status[df$mar_status == "4"] <-"Widowed"
+df$mar_status[df$mar_status == "5"] <-"Other"
+
+
+df$study_field[df$study_field == "1"] <-"Natural sciences"
+df$study_field[df$study_field == "2"] <-"Humanities"
+df$study_field[df$study_field == "3"] <-"Economics"
+df$study_field[df$study_field == "4"] <-"Law"
+df$study_field[df$study_field == "5"] <-"Medicine"
+df$study_field[df$study_field == "6"] <-"Other"
+df$study_field[is.na(df$study_field)] <-"Didn't study"
+
+df$edu[df$edu == "7"] <- NA
+df$cosm_surg[df$cosm_surg == "4"] <-NA
+df$ann_income[df$ann_income == "5"] <-NA
+df$med_stim_intake[df$med_stim_intake == "7"] <-NA
+df$disabled_rel_fr[df$disabled_rel_fr == "4"] <-NA
+
+df$country[df$country == "1"] <-"Germany"
+df$country[df$country == "2"] <-"Austria"
+
+df_no_na<-na.omit(df)
+
+
+```
+
+#### Liberal
+
+Quick check of the multiple linear regression model on required conditions:
+
+-   Linearity of the relationships between the dependent and independent variables
+
+-   Independence of the observations
+
+-   Normality of the residuals
+
+-   Homoscedasticity of the residuals
+
+-   No influential points (outliers)
+
+-   No multicollinearity
+
+```{r, fig.dim = c(16, 13), dpi = 600}
+
+# my_lm <- lm(lib_sent+ lib_enh+ lib_hmn+ lib_trans ~ sex + age+ edu+ study_field+ann_income+ mar_status+ country+med_stim_intake+stim_consumption+cosm_surg+disabled_rel_fr+ocean_extra+ocean_agree+ ocean_conscc+ocean_neuro+ ocean_open+ social_comp, 
+#             data = df_no_na)
+# 
+# check_model(my_lm)
+
+```
+
+```{r, fig.dim = c(16, 13), dpi = 600}
+
+my_lm <- lm(lib_sent4+
+              lib_enh2+
+              lib_hmn1 ~ lib_sent1+lib_sent2+lib_sent3+
+              lib_enh1+lib_enh3+
+              lib_trans1+lib_trans2+
+              lib_hmn2+lib_hmn3, 
+            data = df_lib)
+
+## Load Libraries
+# install.packages("lavaanPlot")
+# install.packages("mvnormalTest")
+# install.packages("Matrix")
+# install.packages("MVN")
+# 
+# library(lavaan)
+# library(lavaanPlot)
+# library(dplyr) 
+# library(tidyr)
+# library(knitr)
+# library(mvnormalTest)
+# 
+# mvnout <- mardia(df_lib %>% select(lib_sent_1_1:lib_trans_2_4))
+# ## Shapiro-Wilk Univariate normality test
+# mvnout$uv.shapiro
+# ## Mardia Multivariate normaility test
+# mvnout$mv.test
+# 
+# #Results from both the univariate and multivariate tests indicate that the measures do not come from normally distributed univariate or multivariate distributions (the ‘No’ results in the table). We address these issues in the following model specification stage.
+# 
+# library(knitr)
+# library(MVN)
+# 
+# ## Model treated as categorical
+# scale.model <- 'scale = ~ lib_sent_1_1+ lib_sent_1_2 + lib_trans_2_4'
+# fit.cat <- cfa(scale.model, data=df_lib, mimic =c("MPlus"), std.lv = TRUE,
+#                ordered = TRUE)
+# fitMeasures(fit.cat, c("chisq.scaled", "df_lib", "pvalue.scaled"))
+
+
+check_model(my_lm)
+
+```
+
+**Model selection:**
+
+```{r}
+
+#Model selection:
+(mystep <- stepAIC(my_lm, direction = "backward",
+                      trace = FALSE))
+```
+
+
+Final model parameters:
+
+```{r}
+tab_model(mystep)
+
+
+```
+
+Cluster Analysis 
+
+```{r}
+
+# 2. Compute k-means
+set.seed(123)
+km.res <- kmeans(scale(df_factors), centers = 2, nstart = 25)
+km.res
+
+# 3. Visualize
+library("factoextra")
+
+
+
+fviz_cluster(km.res, data = df_factors,
+             ggtheme = theme_minimal(),
+             geom = c("point"), shape = 16,
+             main = "Partitioning Clustering Plot"
+             )  + geom_text(aes(label = paste0(df_main$sex)), alpha = 0.5, size = 3, nudge_y = 0.1, show.legend = FALSE)
+#+ geom_point(aes(shape = df_main$sex), alpha = 0.5)
+#+ geom_text(aes(label = paste0(df_main$sex)), alpha = 0.5, size = 3, nudge_y = 0.1, show.legend = FALSE)
+
+# Compute hierarchical clustering and cut into 4 clusters
+res <- hcut(df_clean, k = 28, stand = TRUE)
+
+# Visualize
+fviz_dend(res, rect = TRUE, cex = 0.5)
+
+```
