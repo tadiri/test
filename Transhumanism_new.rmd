@@ -9,6 +9,7 @@ output:
     highlight: github
     #testtesttest
     #another test from browser
+    #checking how gitkraken works
 ---
 
 ```{r setup, include = FALSE}
