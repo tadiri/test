@@ -10,6 +10,7 @@ output:
     #testtesttest
     #another test from browser
     #smth else
+    #done via gitkraken
 ---
 
 ```{r setup, include = FALSE}
