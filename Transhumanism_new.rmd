@@ -8,6 +8,7 @@ output:
     theme: architect
     highlight: github
     #testtesttest
+    #another test from browser
 ---
 
 ```{r setup, include = FALSE}
