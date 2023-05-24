@@ -9,7 +9,9 @@ output:
     highlight: github
     #testtesttest
     #another test from browser
-    #checking how gitkraken works
+    #smth else
+    #done via gitkraken
+    #try n1000
 ---
 
 ```{r setup, include = FALSE}
