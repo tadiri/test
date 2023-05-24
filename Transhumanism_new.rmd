@@ -9,6 +9,7 @@ output:
     highlight: github
     #testtesttest
     #another test from browser
+    #smth else
 ---
 
 ```{r setup, include = FALSE}
